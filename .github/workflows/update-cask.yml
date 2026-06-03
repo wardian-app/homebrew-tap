@@ -1,0 +1,159 @@
+name: Update Wardian Cask
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Wardian release tag to publish, for example v0.4.0"
+        required: true
+  repository_dispatch:
+    types:
+      - wardian-release-published
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-cask:
+    name: Update cask
+    runs-on: macos-latest
+    steps:
+      - name: Checkout tap
+        uses: actions/checkout@v4
+
+      - name: Resolve release tag
+        id: release
+        shell: bash
+        env:
+          DISPATCH_TAG: ${{ github.event.client_payload.tag }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-${DISPATCH_TAG:-}}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected stable tag like v0.4.0, got '${tag:-<empty>}'" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Fetch Wardian release metadata
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release view "$RELEASE_TAG" \
+            --repo wardian-app/Wardian \
+            --json tagName,isDraft,isPrerelease,assets \
+            > release-assets.json
+
+      - name: Generate cask
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("fs");
+
+          const release = JSON.parse(fs.readFileSync("release-assets.json", "utf8"));
+          const tag = process.env.RELEASE_TAG;
+          const version = process.env.VERSION;
+
+          if (release.tagName !== tag) {
+            throw new Error(`Expected release ${tag}, got ${release.tagName}`);
+          }
+          if (release.isDraft) {
+            throw new Error(`${tag} is still a draft release`);
+          }
+          if (release.isPrerelease) {
+            throw new Error(`${tag} is a prerelease; cask updates require stable releases`);
+          }
+
+          const byName = new Map(release.assets.map((asset) => [asset.name, asset]));
+
+          function resolveAsset(name) {
+            const asset = byName.get(name);
+            if (!asset) {
+              throw new Error(`Missing release asset ${name}`);
+            }
+
+            const digest = asset.digest;
+            if (typeof digest !== "string" || !/^sha256:[a-f0-9]{64}$/i.test(digest)) {
+              throw new Error(`${name} is missing a valid sha256 digest`);
+            }
+
+            const url = asset.url;
+            if (typeof url !== "string" || !url.includes(`/releases/download/${tag}/`)) {
+              throw new Error(`${name} URL does not target ${tag}: ${url}`);
+            }
+
+            return {
+              url,
+              sha256: digest.replace(/^sha256:/i, "").toLowerCase(),
+            };
+          }
+
+          const arm = resolveAsset(`Wardian_${version}_aarch64.dmg`);
+          const intel = resolveAsset(`Wardian_${version}_x64.dmg`);
+
+          const cask = `cask "wardian" do
+            version "${version}"
+
+            on_arm do
+              url "${arm.url}"
+              sha256 "${arm.sha256}"
+            end
+
+            on_intel do
+              url "${intel.url}"
+              sha256 "${intel.sha256}"
+            end
+
+            name "Wardian"
+            desc "Local command center for multi-agent CLI workflows."
+            homepage "https://wardian.org"
+
+            livecheck do
+              url :url
+              strategy :github_latest
+            end
+
+            auto_updates true
+
+            app "Wardian.app"
+
+            zap trash: [
+              "~/Library/Application Support/org.wardian.desktop",
+              "~/Library/Logs/org.wardian.desktop",
+              "~/Library/Preferences/org.wardian.desktop.plist",
+            ]
+          end
+          `;
+
+          fs.writeFileSync("Casks/wardian.rb", cask.replace(/^ {10}/gm, ""), "utf8");
+          NODE
+
+      - name: Audit cask
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew audit --cask Casks/wardian.rb
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "Update Wardian cask to ${{ steps.release.outputs.version }}"
+          branch: "update/wardian-${{ steps.release.outputs.version }}"
+          delete-branch: true
+          title: "Update Wardian cask to ${{ steps.release.outputs.version }}"
+          body: |
+            Updates `Casks/wardian.rb` from the published Wardian `${{ steps.release.outputs.tag }}` release assets.
+
+            Validation:
+            - `brew audit --cask Casks/wardian.rb`
+          labels: release
