@@ -20,17 +20,16 @@ the SHA-256 checksums published with each stable release artifact.
 
 ## Maintainers
 
-After a stable Wardian release is published, generate the cask from the Wardian
-repository:
+After a stable Wardian release is published, run the **Update Wardian Cask**
+workflow with the release tag, for example `v0.4.0`. The workflow reads the
+published GitHub Release assets, rewrites `Casks/wardian.rb`, runs Homebrew
+audit, and opens a pull request.
 
-```bash
-mkdir -p dist/package-managers/v0.3.6
-gh release view v0.3.6 --json tagName,assets > dist/package-managers/v0.3.6/assets.json
-npm run release:package-manifests -- --release-assets dist/package-managers/v0.3.6/assets.json --out dist/package-managers/v0.3.6
-```
+The workflow also accepts `repository_dispatch` events of type
+`wardian-release-published` so the main Wardian release workflow can trigger tap
+updates automatically after publishing stable releases.
 
-Then copy `dist/package-managers/v0.3.6/homebrew/wardian.rb` to
-`Casks/wardian.rb` in this tap and validate on macOS:
+Validate a local cask change on macOS with:
 
 ```bash
 brew audit --cask ./Casks/wardian.rb
