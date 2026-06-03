@@ -29,9 +29,9 @@ The workflow also accepts `repository_dispatch` events of type
 `wardian-release-published` so the main Wardian release workflow can trigger tap
 updates automatically after publishing stable releases.
 
-Validate a local cask change on macOS with:
+Validate a local cask change on macOS from a tapped checkout:
 
 ```bash
-brew audit --cask ./Casks/wardian.rb
-brew install --cask --verbose ./Casks/wardian.rb
+brew audit --cask wardian
+brew install --cask --verbose wardian
 ```
