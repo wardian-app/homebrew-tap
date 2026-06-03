@@ -48,7 +48,7 @@ jobs:
           gh release view "$RELEASE_TAG" \
             --repo wardian-app/Wardian \
             --json tagName,isDraft,isPrerelease,assets \
-            > release-assets.json
+            > "$RUNNER_TEMP/release-assets.json"
 
       - name: Generate cask
         shell: bash
@@ -60,7 +60,7 @@ jobs:
           node <<'NODE'
           const fs = require("fs");
 
-          const release = JSON.parse(fs.readFileSync("release-assets.json", "utf8"));
+          const release = JSON.parse(fs.readFileSync(`${process.env.RUNNER_TEMP}/release-assets.json`, "utf8"));
           const tag = process.env.RELEASE_TAG;
           const version = process.env.VERSION;
 
