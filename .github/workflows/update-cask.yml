@@ -105,12 +105,14 @@ jobs:
             version "${version}"
 
             on_arm do
-              url "${arm.url}"
+              url "https://github.com/wardian-app/Wardian/releases/download/v#{version}/Wardian_#{version}_aarch64.dmg",
+                  verified: "github.com/wardian-app/Wardian/"
               sha256 "${arm.sha256}"
             end
 
             on_intel do
-              url "${intel.url}"
+              url "https://github.com/wardian-app/Wardian/releases/download/v#{version}/Wardian_#{version}_x64.dmg",
+                  verified: "github.com/wardian-app/Wardian/"
               sha256 "${intel.sha256}"
             end
 
