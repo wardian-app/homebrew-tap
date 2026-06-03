@@ -142,7 +142,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          brew audit --cask Casks/wardian.rb
+          tap_dir="$(brew --repo)/Library/Taps/wardian-app/homebrew-tap"
+          mkdir -p "$(dirname "$tap_dir")"
+          ln -s "$GITHUB_WORKSPACE" "$tap_dir"
+          brew audit --cask wardian
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v7
@@ -155,5 +158,5 @@ jobs:
             Updates `Casks/wardian.rb` from the published Wardian `${{ steps.release.outputs.tag }}` release assets.
 
             Validation:
-            - `brew audit --cask Casks/wardian.rb`
+            - `brew audit --cask wardian`
           labels: release
