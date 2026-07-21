@@ -22,8 +22,9 @@ the SHA-256 checksums published with each stable release artifact.
 
 After a stable Wardian release is published, run the **Update Wardian Cask**
 workflow with the release tag, for example `v0.4.0`. The workflow reads the
-published GitHub Release assets, rewrites `Casks/wardian.rb`, runs Homebrew
-audit, and opens a pull request.
+published GitHub Release assets, verifies both macOS DMGs with Developer ID,
+notarization, stapling, and Gatekeeper assessment, rewrites `Casks/wardian.rb`,
+runs Homebrew audit, and opens a pull request.
 
 The workflow also accepts `repository_dispatch` events of type
 `wardian-release-published` so the main Wardian release workflow can trigger tap

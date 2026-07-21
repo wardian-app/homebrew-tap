@@ -50,6 +50,34 @@ jobs:
             --json tagName,isDraft,isPrerelease,assets \
             > "$RUNNER_TEMP/release-assets.json"
 
+      - name: Verify notarized macOS release artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          for architecture in aarch64 x64; do
+            asset="Wardian_${VERSION}_${architecture}.dmg"
+            dmg="$RUNNER_TEMP/$asset"
+            gh release download "$RELEASE_TAG" --repo wardian-app/Wardian --pattern "$asset" --dir "$RUNNER_TEMP"
+            xcrun stapler validate "$dmg"
+            spctl --assess --type open --verbose=4 "$dmg"
+
+            mount_path="$(mktemp -d)"
+            hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount_path"
+            app_path="$(find "$mount_path" -maxdepth 1 -type d -name '*.app' -print -quit)"
+            if [[ -z "$app_path" ]]; then
+              echo "No app bundle found in $asset" >&2
+              exit 1
+            fi
+            codesign --verify --deep --strict --verbose=4 "$app_path"
+            xcrun stapler validate "$app_path"
+            spctl --assess --type execute --verbose=4 "$app_path"
+            hdiutil detach "$mount_path"
+          done
+
       - name: Generate cask
         shell: bash
         env:
@@ -159,6 +187,9 @@ jobs:
           body: |
             Updates `Casks/wardian.rb` from the published Wardian `${{ steps.release.outputs.tag }}` release assets.
 
+            Relates to wardian-app/Wardian#711.
+
             Validation:
             - `brew audit --cask wardian`
+            - macOS Developer ID, notarization, stapling, and Gatekeeper assessment for both DMGs
           labels: release
