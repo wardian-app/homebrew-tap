@@ -63,7 +63,7 @@ jobs:
             dmg="$RUNNER_TEMP/$asset"
             gh release download "$RELEASE_TAG" --repo wardian-app/Wardian --pattern "$asset" --dir "$RUNNER_TEMP"
             xcrun stapler validate "$dmg"
-            spctl --assess --type open --verbose=4 "$dmg"
+            spctl --assess --type open --verbose=4 --context context:primary-signature "$dmg"
 
             mount_path="$(mktemp -d)"
             hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount_path"
