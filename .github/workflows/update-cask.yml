@@ -175,6 +175,7 @@ jobs:
           tap_dir="$(brew --repo)/Library/Taps/wardian-app/homebrew-tap"
           mkdir -p "$(dirname "$tap_dir")"
           ln -s "$GITHUB_WORKSPACE" "$tap_dir"
+          brew trust --cask wardian-app/tap/wardian
           brew audit --cask wardian
 
       - name: Create pull request
