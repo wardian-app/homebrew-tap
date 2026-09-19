@@ -1,14 +1,14 @@
 cask "wardian" do
-  version "0.6.0"
+  version "0.6.1"
 
   on_arm do
     url "https://github.com/wardian-app/Wardian/releases/download/v#{version}/Wardian_#{version}_aarch64.dmg"
-    sha256 "7f15029c3be79d6641c98c5b9a621f10709d00a6f98a579ac3ae31f2ea43886e"
+    sha256 "2e373dbebe83f99e3d2080581adfa3e96eb67f0041c280babe25fc421e3f9ee4"
   end
 
   on_intel do
     url "https://github.com/wardian-app/Wardian/releases/download/v#{version}/Wardian_#{version}_x64.dmg"
-    sha256 "2a0b5eca9439dc6d1ee50bd41a247d55be1e833ed9080f4c30db319a56d524c8"
+    sha256 "629acf36080bb8bee4ef04c85d9845064b3632c66754f9061c8030ea9f39b53b"
   end
 
   name "Wardian"
